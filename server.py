@@ -1,3 +1,4 @@
+from datetime import datetime
 import logging
 
 from aiogram import Bot, Dispatcher, executor, types
@@ -24,9 +25,19 @@ async def send_welcome(message: types.Message):
     await message.answer(
         "Здарова, Отец!\n\n"
         "Хочешь работы подкинуть? Жми /add_task\n"
-        "Рандомную задачку выкинуть: /random\n"
+        "Рандомную задачку выкинуть: /roulette\n"
         "Все показать: /all_task\n"
         "Задачи на сегодня: /today_task\n")
+
+
+@dp.message_handler(lambda message: message.text.startswith('/del'))
+async def del_tasks(message: types.Message):
+    """Удаляет одну задачу по её идентификатору"""
+    row_id = int(message.text[4:])
+    Tasks.delete_task(row_id)
+    answer_message = "Задал ей жару! Проверь список, инфа сотка, там ее теперь нет"
+    await message.answer(answer_message)
+    await send_list_tasks(message)
 
 
 @dp.message_handler(state='*', commands=['reset_state'])
@@ -46,7 +57,33 @@ async def send_list_tasks(message: types.Message):
     tasks = Tasks().get_all_tasks()
     result_string = 'Все твои задачи, пупсик:'
     for index, task in enumerate(tasks):
-        result_string += f'\n{index + 1}. {task.get("description")} — нажми /del{task.get("id")} для удаления'
+        if task.get('date_'):
+            result_string += f'\n{index + 1}. {task.get("description")} \nДата: {task.get("date_")} ' \
+                             f'\nУдалить: /del{task.get("id")}'
+        else:
+            result_string += f'\n{index + 1}. {task.get("description")}' \
+                             f'\nУдалить: /del{task.get("id")}'
+    await message.answer(result_string)
+
+
+@dp.message_handler(commands=['roulette'])
+async def send_random_tasks(message: types.Message):
+    """Выводит рандомную задачу"""
+    random_task = Tasks().get_random_task()
+    result_string = 'И тебе ВЫПАДААААЕЕЕЕТ:'
+    result_string += f'\n{random_task.get("description")}' \
+                     f'\nУдалить: /del{random_task.get("id")}'
+    await message.answer(result_string)
+
+
+@dp.message_handler(commands=['today_task'])
+async def send_today_tasks(message: types.Message):
+    """Выводит задачи на сегодня"""
+    today_task = Tasks().get_today_tasks()
+    result_string = 'Сегодня у тебя много работы, прям завал:'
+    for index, task in enumerate(today_task):
+        result_string += f'\n{index + 1}. {task.get("description")}' \
+                         f'\nУдалить: /del{task.get("id")}'
     await message.answer(result_string)
 
 
@@ -69,10 +106,10 @@ async def add_task(message: types.Message, state: FSMContext):
     except exceptions.NotCorrectMessage as e:
         await message.answer(str(e))
         return
-    if task.date:
+    if task.date_:
         answer_message = (
             f"Задача успешно добавлена.\n"
-            f"Дата: {task.date}\n"
+            f"Дата: {task.date_}\n"
             f"Текст задачи: {task.description}")
     else:
         answer_message = (

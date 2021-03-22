@@ -1,6 +1,7 @@
 """Работа с задачами"""
+import random
 import re
-from typing import Dict, List, NamedTuple
+from typing import Dict, List, NamedTuple, Any
 from datetime import date, datetime
 import db
 import exceptions
@@ -9,12 +10,12 @@ import exceptions
 class Task(NamedTuple):
     """Структура задач"""
     description: str
-    date: date
+    date_: str
 
 
 class Message(NamedTuple):
     """Структура распаршенного сообщения о новой задаче"""
-    date: date
+    date: str
     description: str
 
 
@@ -33,18 +34,21 @@ class Tasks:
         """Возвращает справочник задач."""
         return self._tasks
 
-    def get_task(self, task_desc: str) -> list:
-        """Возвращает задачу по ее номеру"""
-        finded = None
-        other_category = None
-        desc = []
+    def get_random_task(self) -> dict:
+        """Возвращает случайную задачу"""
+        return random.choice(self._tasks)
+
+    def get_today_tasks(self) -> List[dict]:
+        """Возвращает задачи на сегодня"""
+        today_tasks = []
         for task in self._tasks:
-            desc.append(task['description'])
-        #     if task_desc in task.description:
-        #         finded = category
-        # if not finded:
-        #     finded = other_category
-        return desc
+            if task.date_ == datetime.now().strftime("%d/%m/%y"):
+                today_tasks.append(task)
+        return today_tasks
+
+    @staticmethod
+    def delete_task(row_id: int):
+        db.delete('tasks', row_id)
 
     @staticmethod
     def add_task(raw_message: str) -> Task:
@@ -55,7 +59,7 @@ class Tasks:
             "description": parsed_message.description,
             "date_": parsed_message.date,
         })
-        return Task(description=parsed_message.description, date=parsed_message.date)
+        return Task(description=parsed_message.description, date_=parsed_message.date)
 
     @staticmethod
     def _parse_message(raw_message: str) -> Message:
@@ -79,7 +83,7 @@ class Tasks:
         return Message(date=task_date, description=task_text)
 
     @staticmethod
-    def _format_date_with_validate(date_task: str) -> date:
+    def _format_date_with_validate(date_task: str) -> str:
         """Приведение даты к общему формату для записи в БД"""
         if len(date_task.split('/')) != 1:
             split_date = date_task.split('/')
@@ -94,12 +98,10 @@ class Tasks:
 
         try:
             if len(year) == 2:
-                date_task = datetime.strptime(f"{int(day)}/{int(mouth)}/{int(year)}", "%d/%m/%y").date()
+                date_task = datetime.strptime(f"{int(day)}/{int(mouth)}/{int(year)}", "%d/%m/%y").strftime("%d/%m/%y")
             else:
-                date_task = date(int(year), int(mouth), int(day))
+                date_task = date(int(year), int(mouth), int(day)).strftime("%d/%m/%y")
         except ValueError:
             raise exceptions.NotCorrectData('Некоректная дата. Укажите существующую дату\n'
                                             'Месяцев может быть только 12, а дней столько, сколько в указаном месяце')
         return date_task
-
-
