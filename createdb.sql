@@ -4,7 +4,7 @@ create table tasks(
     date_ text
 );
 
-create table quotes_of_the_day(
+create table quotes(
     id integer primary key,
     text text,
     author varchar(255)
@@ -20,6 +20,6 @@ values
     (1, "Сделать что-то", date('now')),
     (2, "Сделать что-то 2", date('now'));
 
-insert into quotes_of_the_day(text, author) values ('Цитата', 'Автор');
+insert into quotes(text, author) values ('Цитата', 'Автор');
 
 insert into compliments(text) values ('Комплимент');

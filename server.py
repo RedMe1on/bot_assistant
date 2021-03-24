@@ -1,4 +1,6 @@
 import asyncio
+import random
+from datetime import datetime, timedelta
 import logging
 
 from aiogram import Bot, Dispatcher, executor, types
@@ -8,6 +10,8 @@ from aiogram.dispatcher import FSMContext
 import exceptions
 from tasks import Tasks
 from utils import StateAddTask
+import time
+import schedule
 
 API_TOKEN = '1513442230:AAGZFl5idWxmyxXkTPYwfArTOGraMWp8I-Y'
 
@@ -22,6 +26,7 @@ dp = Dispatcher(bot, storage=MemoryStorage())
 @dp.message_handler(commands=['start', 'help'])
 async def send_welcome(message: types.Message):
     """Отправляет приветственное сообщение и помощь по боту"""
+
     await message.answer(
         "Здарова, Отец!\n\n"
         "Хочешь работы подкинуть? Жми /add_task\n"
@@ -162,31 +167,26 @@ async def add_task(message: types.Message, state: FSMContext):
     await state.finish()
 
 
+async def send_compliments_or_quotes(time_before_send_message: int):
+    """Отправляет сообщение с комплиментом или цитатой"""
+    await asyncio.sleep(time_before_send_message)
+    await bot.send_message(567115076, f'test')
 
 
-
-# async def my_func():
-#     # твоя логика с отправкой сообщений тут
-#     print('hi, father')
-#     when_to_call = loop.time() + delay  # delay -- промежуток времени в секундах.
-#     loop.call_at(when_to_call, my_callback)
-#
-#
-# def my_callback():
-#     asyncio.create_task(my_func())
-#
-#
-# # async def gg():
-# #     while True:
-# #         await bot.send_message(567115076, 'test')
-# #         await asyncio.sleep(10)
+async def check_time(start_time: int, end_time: int):
+    """Следит, чтобы сообщения были отправлены в нужный интервал времени"""
+    hour = datetime.now().time().hour
+    time_to_end_interval = (timedelta(hours=(end_time - hour))).total_seconds()
+    while True:
+        if start_time <= hour < end_time:
+            random_time_for_send_message = random.randint(1, time_to_end_interval)
+            await send_compliments_or_quotes(random_time_for_send_message)
+            await asyncio.sleep(time_to_end_interval)
+        else:
+            await asyncio.sleep(3600)
 
 
 if __name__ == '__main__':
-    # loop = asyncio.get_event_loop()
-    # delay = 10.0
-    # loop.run_until_complete(my_callback())
+    loop = asyncio.get_event_loop()
+    loop.create_task(check_time(start_time=2, end_time=3))
     executor.start_polling(dp, skip_updates=True)
-    # loop.run_forever()
-
-
