@@ -1,10 +1,10 @@
 """Работа с задачами"""
-import random
 import re
 from typing import Dict, List, NamedTuple, Any
 from datetime import date, datetime, timedelta
 import db
 import exceptions
+from mixins import ObjectMixin
 
 
 class Task(NamedTuple):
@@ -19,30 +19,15 @@ class Message(NamedTuple):
     description: str
 
 
-class Tasks:
-    def __init__(self):
-        self._tasks = None
-        self._load_tasks()
-
-    def _load_tasks(self):
-        """Возвращает справочник задач из БД"""
-        self._tasks = db.fetchall(
-            "tasks", "id description date_".split()
-        )
-
-    def get_all_tasks(self) -> List[dict]:
-        """Возвращает справочник задач."""
-        return self._tasks
-
-    def get_random_task(self) -> dict:
-        """Возвращает случайную задачу"""
-        return random.choice(self._tasks)
+class Tasks(ObjectMixin):
+    table = "tasks"
+    column_string = "id description date_"
 
     def get_tasks_with_days_interval(self, number_of_days: int) -> List[dict]:
         """Возвращает задачи за определенный период"""
         data_tasks = []
         date_task = datetime.now() + timedelta(days=number_of_days)
-        for task in self._tasks:
+        for task in self._all_objects:
             if task.get('date_') == date_task.strftime("%d/%m/%y"):
                 data_tasks.append(task)
         return data_tasks
@@ -50,23 +35,26 @@ class Tasks:
     def get_overdue_tasks(self) -> List[dict]:
         """Возвращает просроченные задачи"""
         data_tasks = []
-        for task in self._tasks:
+        for task in self._all_objects:
             if task.get('date_') < datetime.now().strftime("%d/%m/%y"):
                 data_tasks.append(task)
         return data_tasks
 
-    @staticmethod
-    def delete_task(row_id: int):
-        db.delete('tasks', row_id)
+    @classmethod
+    def delete_task(cls, row_id: int):
+        """Удаляет задачу по ее id"""
+        db.delete(cls.table, row_id)
 
-    @staticmethod
-    def add_task(raw_message: str) -> Task:
+    @classmethod
+    def add_task(cls, raw_message: str) -> Task:
         """Добавляет новую задачу
         Принимает на вход текст сообщения, пришедшего в бот"""
+        # разделяет строку столбцов на три, две из которых мы используем в словаре
+        column_names = cls.column_string.split()
         parsed_message = Tasks._parse_message(raw_message)
-        inserted_row_id = db.insert("tasks", {
-            "description": parsed_message.description,
-            "date_": parsed_message.date,
+        inserted_row_id = db.insert(cls.table, {
+            column_names[1]: parsed_message.description,
+            column_names[2]: parsed_message.date,
         })
         return Task(description=parsed_message.description, date_=parsed_message.date)
 
