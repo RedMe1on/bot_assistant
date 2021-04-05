@@ -223,7 +223,7 @@ async def check_time(start_time: int, end_time: int):
             print(time_to_end_interval / 60)
             random_time_for_send_message = random.randint(1, time_to_end_interval)
             await send_compliments_or_quotes(random_time_for_send_message)
-            await asyncio.sleep(time_to_end_interval)
+            await asyncio.sleep(time_to_end_interval - random_time_for_send_message)
         else:
             await asyncio.sleep(3600)
 
