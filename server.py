@@ -24,16 +24,20 @@ bot = Bot(token=API_TOKEN, parse_mode=types.ParseMode.HTML)
 dp = Dispatcher(bot, storage=MemoryStorage())
 
 
-@dp.message_handler(commands=['start', 'help'])
+@dp.message_handler(commands=['start'])
 async def send_welcome(message: types.Message):
     """Отправляет приветственное сообщение и помощь по боту"""
 
     await message.answer(
-        "Здарова, Отец!\n\n"
-        "Хочешь работы подкинуть? Жми /add_task\n"
-        "Рандомную задачку выкинуть: /roulette\n"
-        "Все показать: /all_task\n"
-        "Задачи на сегодня: /today_task\n", reply_markup=start_menu)
+        "Ну здарова, Отец!\n\n"
+        "Хочешь работы подкинуть? Жми /add_task или напиши Добавь\n"
+        "Рандомную задачку выкинуть: /roulette или напиши Рулетка\n"
+        "Все показать \U0001F60F: /all_task или напиши Все или Список\n"
+        "Задачи на сегодня: /today_task или напиши Сегодня\n"
+        "Задачи на завтра: /tomorrow_task или напиши Завтра\n"
+        "Задачи на неделю: /week_task или напиши Неделя\n"
+        "Просроченные задачи (самая частая кнопка - 100%): /overdue_task или напиши Просроченные\n"
+        "Нужна помощь по боту? Жми /help или напиши Помогите или Хелп, или Помощь", reply_markup=start_menu)
 
 
 @dp.message_handler(lambda message: message.text.startswith('/del'))
@@ -140,7 +144,7 @@ async def send_list_overdue_tasks(message: types.Message):
     if len(overdue_task) != 0:
         result_string = 'Мда, всегда откладываешь на завтра? Я тоже :)\n' \
                         'Да когда-нибудь потом сделаешь, что уж там. \n' \
-                        'Но, если это когда-нибудь сейчас, то вот тебе список:'
+                        'Но, если это когда-нибудь сейчас, то вот тебе список:\n'
         for index, task in enumerate(overdue_task):
             result_string += f'\n{index + 1}. {task.get("description")} \nДата: {task.get("date_")} ' \
                              f'\nУдалить: /del{task.get("id")}'
@@ -185,6 +189,30 @@ async def add_task(message: types.Message, state: FSMContext):
             f"Текст задачи: {task.description}")
     await message.answer(answer_message, reply_markup=start_menu)
     await state.finish()
+
+
+@dp.message_handler(commands=['help'])
+@dp.message_handler(lambda message: 'помогит' in message.text.lower() or 'хелп' in message.text.lower() or 'помощь' in message.text.lower())
+async def send_welcome(message: types.Message):
+    """Отправляет помощь и документацию по боту"""
+
+    await message.answer(
+        'Пояснительная бригада тут!\n\n'
+        'Все слова и фразы можно писать в рандомном контексте и склонениях (почти всех, наверное):\n'
+        '"Тупой раб, добавь задачу"\n'
+        '"Мне нужно добавить задачу"\n'
+        '"Рулетку бы сегодня" - выдаст рулетку\n'
+        '"Что у нас сегодня по задачам?" - выдаст список задач на сегодня и т.д.\n'
+        'Надеюсь, понятно объяснил, теперь хватит примеров, фигачим команды:\n\n'
+        '/add_task - Добавляет задачу, можно вызывать словом "добавить"\n'
+        '/all_task - Показывает все задачи, можно вызывать словом "все" или "список"\n'
+        '/roulette - Выдает рандомную задачу, можно вызывать словом "рулетка"\n'
+        '/today_task - Список задач на сегодня, можно вызывать словом "сегодня"\n'
+        '/tomorrow_task - Список задач на завтра, можно вызывать словом "завтра"\n'
+        '/week_task - Список задач на неделю, можно вызывать словом "неделя"\n'
+        '/overdue_task - Список просроченных задач, можно вызывать словом "просроченные"\n'
+        '/reset_state - Возвращает к первоначальному меню откуда хочешь :), можно вызывать словом "отмена"\n',
+        reply_markup=start_menu)
 
 
 async def send_compliments_or_quotes(time_before_send_message: int):
