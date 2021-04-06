@@ -7,9 +7,9 @@ from aiogram import Bot, Dispatcher, executor, types
 from aiogram.contrib.fsm_storage.memory import MemoryStorage
 from aiogram.dispatcher import FSMContext
 
-
 import exceptions
 from buttons import start_menu, add_task_menu
+from middlewares import AccessMiddleware
 from quotes_and_compliments import Compliments, Quotes
 from tasks import Tasks
 from utils import StateAddTask
@@ -85,18 +85,6 @@ async def send_random_tasks(message: types.Message):
     await message.answer(result_string)
 
 
-@dp.message_handler(commands=['overdue_tasks'])
-@dp.message_handler(lambda message: 'просро' in message.text.lower())
-async def send_random_tasks(message: types.Message):
-    """Выводит рандомную задачу"""
-    overdue_tasks = Tasks().get_overdue_tasks()
-    result_string = 'Мда, всегда откладываешь на завтра? Я тоже :)'
-    for index, task in enumerate(overdue_tasks):
-        result_string += f'\n{index + 1}. {task.get("description")}' \
-                         f'\nУдалить: /del{task.get("id")}'
-    await message.answer(result_string)
-
-
 @dp.message_handler(commands=['today_task'])
 @dp.message_handler(lambda message: 'сегод' in message.text.lower())
 async def send_today_tasks(message: types.Message):
@@ -150,13 +138,15 @@ async def send_list_overdue_tasks(message: types.Message):
     """Выводит задачи на сегодня"""
     overdue_task = Tasks().get_overdue_tasks()
     if len(overdue_task) != 0:
-        result_string = 'Да когда-нибудь потом сделаешь, что уж там. \n' \
+        result_string = 'Мда, всегда откладываешь на завтра? Я тоже :)\n' \
+                        'Да когда-нибудь потом сделаешь, что уж там. \n' \
                         'Но, если это когда-нибудь сейчас, то вот тебе список:'
         for index, task in enumerate(overdue_task):
             result_string += f'\n{index + 1}. {task.get("description")} \nДата: {task.get("date_")} ' \
                              f'\nУдалить: /del{task.get("id")}'
     else:
-        result_string = 'Нет просроченных задач, хм, ошибки быть не может, странно, но ладно, ты молодец!'
+        result_string = 'Вот это я понимаю, никаких просроченных задач. Ты молодец!\n' \
+                        'Я тоже люблю ставить задачи без сроков, либо удалять те, что не успел выполнить ;)'
     await message.answer(result_string)
 
 
@@ -220,7 +210,6 @@ async def check_time(start_time: int, end_time: int):
     time_to_end_interval = (timedelta(hours=(end_time - hour))).total_seconds()
     while True:
         if start_time <= hour < end_time:
-            print(time_to_end_interval / 60)
             random_time_for_send_message = random.randint(1, time_to_end_interval)
             await send_compliments_or_quotes(random_time_for_send_message)
             await asyncio.sleep(time_to_end_interval - random_time_for_send_message)
