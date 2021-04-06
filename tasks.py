@@ -36,7 +36,9 @@ class Tasks(ObjectMixin):
         """Возвращает просроченные задачи"""
         data_tasks = []
         for task in self._all_objects:
-            if task.get('date_') < datetime.now().strftime("%d/%m/%y"):
+            date_list = task.get('date_').split('/')
+            date_ = datetime(int(date_list[2]), int(date_list[1]), int(date_list[0]))
+            if date_ < datetime.now():
                 data_tasks.append(task)
         return data_tasks
 
