@@ -23,22 +23,40 @@ class Tasks(ObjectMixin):
     table = "tasks"
     column_string = "id description date_"
 
+    def get_date_without_deadline(self):
+        """Возвращает задачи без срока"""
+        data_tasks = []
+        for task in self._all_objects:
+            if task.get('date_') is None:
+                data_tasks.append(task)
+        return data_tasks
+
     def get_tasks_with_days_interval(self, number_of_days: int) -> List[dict]:
         """Возвращает задачи за определенный период"""
         data_tasks = []
-        date_task = datetime.now() + timedelta(days=number_of_days)
-        for task in self._all_objects:
-            if task.get('date_') == date_task.strftime("%d/%m/%y"):
-                data_tasks.append(task)
+        date_task = (datetime.now() + timedelta(days=number_of_days)).date()
+        if number_of_days == 0 or number_of_days == 1:
+            for task in self._all_objects:
+                if task.get('date_'):
+                    date_ = datetime.strptime(task.get('date_'), "%d/%m/%y").date()
+                    if date_ == date_task:
+                        data_tasks.append(task)
+        elif number_of_days > 1:
+            for task in self._all_objects:
+                if task.get('date_'):
+                    date_ = datetime.strptime(task.get('date_'), "%d/%m/%y").date()
+                    if date_ <= date_task and (date_task - date_).days <= number_of_days:
+                        data_tasks.append(task)
         return data_tasks
 
     def get_overdue_tasks(self) -> List[dict]:
         """Возвращает просроченные задачи"""
         data_tasks = []
         for task in self._all_objects:
-            date_ = datetime.strptime(task.get('date_'), "%d/%m/%y")
-            if date_ < datetime.now():
-                data_tasks.append(task)
+            if task.get('date_'):
+                date_ = datetime.strptime(task.get('date_'), "%d/%m/%y").date()
+                if date_ < datetime.now().date():
+                    data_tasks.append(task)
         return data_tasks
 
     @classmethod
