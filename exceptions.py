@@ -5,6 +5,6 @@ class NotCorrectMessage(Exception):
     """Некорректное сообщение в бот, которое не удалось распарсить"""
     pass
 
-class NotCorrectData(Exception):
+class ObjectDoesNotExist(Exception):
     """Некорректная дата в сообщении, которая не входит в диапазон дат от сегодня до будущего"""
     pass

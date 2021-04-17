@@ -1,6 +1,5 @@
 import random
 from typing import List
-
 import db
 
 
@@ -17,6 +16,11 @@ class ObjectMixin:
         self._all_objects = db.fetchall(
             self.table, self.column_string.split()
         )
+
+    def get_one_objects_by_id(self, row_id: int) -> dict:
+        """Возвращает объект по id"""
+        obj = db.fetchone(self.table, self.column_string.split(), row_id)
+        return obj
 
     def get_all_objects(self) -> List[dict]:
         """Возвращает справочник объектов."""

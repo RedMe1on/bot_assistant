@@ -3,6 +3,8 @@ from typing import Dict, List
 
 import sqlite3
 
+import exceptions
+
 conn = sqlite3.connect(os.path.join("db", "task_assistant.db"))
 cursor = conn.cursor()
 
@@ -19,6 +21,14 @@ def insert(table: str, column_values: Dict):
     conn.commit()
 
 
+def update(table: str, column_dict: Dict, row_id: int) -> None:
+    set_value = [f'{str(column)} = ?' for column in column_dict]
+    set_value = ', '.join(set_value)
+    values = tuple(column_dict.values())
+    cursor.execute(f"UPDATE {table} SET {set_value} WHERE id = {row_id}", values)
+    conn.commit()
+
+
 def fetchall(table: str, columns: List[str]) -> List[Dict]:
     columns_joined = ", ".join(columns)
     cursor.execute(f"SELECT {columns_joined} FROM {table}")
@@ -30,6 +40,18 @@ def fetchall(table: str, columns: List[str]) -> List[Dict]:
             dict_row[column] = row[index]
         result.append(dict_row)
     return result
+
+
+def fetchone(table: str, columns: List[str], row_id: int) -> Dict:
+    columns_joined = ", ".join(columns)
+    cursor.execute(f"SELECT {columns_joined} FROM {table} WHERE id={row_id}")
+    result = cursor.fetchone()
+    if result is None:
+        raise exceptions.ObjectDoesNotExist('Фак! Объекта не существует в моей памяти')
+    dict_result = {}
+    for index, column in enumerate(columns):
+        dict_result[column] = result[index]
+    return dict_result
 
 
 def delete(table: str, row_id: int) -> None:
