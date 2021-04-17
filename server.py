@@ -70,7 +70,6 @@ async def del_tasks(message: types.Message):
     Tasks.delete_task(task_id)
     answer_message = "Задал ей жару! Проверь список, инфа сотка, там ее теперь нет"
     await message.answer(answer_message)
-    await send_list_tasks(message)
 
 
 @dp.message_handler(lambda message: message.text.startswith('/update'))
@@ -294,7 +293,7 @@ async def send_list_tasks_without_deadline(message: types.Message):
         for index, task in enumerate(task_without_deadline):
             result_string += f'\n{index + 1}. {task.get("description")}\n' \
                              f'\nУдалить: /del{task.get("id")}\n' \
-                             f'Обновить: /update{task_without_deadline.get("id")}\n'
+                             f'Обновить: /update{task.get("id")}\n'
     else:
         result_string = 'Задач без даты не нашел, а ты не из ленивых.\n' \
                         'Чекни полный список! ;)'

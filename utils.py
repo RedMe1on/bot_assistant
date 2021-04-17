@@ -30,8 +30,9 @@ def send_today_tasks_message() -> str:
     if len(today_tasks) != 0:
         result_string = 'Сегодня у тебя много работы, прям завал:\n'
         for index, task in enumerate(today_tasks):
-            result_string += f'\n{index + 1}. {task.get("description")}' \
-                             f'\nУдалить: /del{task.get("id")}\n'
+            result_string += f'\n{index + 1}. {task.get("description")}\n' \
+                             f'\nУдалить: /del{task.get("id")}\n' \
+                             f'Обновить: /update{task.get("id")}\n'
     else:
         result_string = 'Ты сегодня самый занятой человек планеты, у тебя целых 0 задач на сегодня!\n' \
                         'Лучше попроси парочку из полного списка или добавь себе работы!'
