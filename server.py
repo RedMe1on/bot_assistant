@@ -136,7 +136,7 @@ async def update_date_tasks(message: types.Message, state: FSMContext):
 
 
 @dp.message_handler(lambda message: 'описание' in message.text.lower(), state=StateUpdateTask.full)
-async def message_for_update_date_tasks(message: types.Message, state: FSMContext):
+async def message_for_update_description_tasks(message: types.Message, state: FSMContext):
     """Сообщение о вводе описания для его обновления"""
     answer_message = "Напиши новое описание. Такое же красивое, как ты \U0001F970"
     await message.answer(answer_message, reply_markup=cancel_menu)
@@ -167,7 +167,7 @@ async def update_description_tasks(message: types.Message, state: FSMContext):
 
 @dp.message_handler(state=StateUpdateTask.full)
 async def update_tasks(message: types.Message, state: FSMContext):
-    """Сообщение для обновления задачи по её идентификатору"""
+    """Обновление задачи по её идентификатору"""
     async with state.proxy() as data:
         try:
             update_task = Tasks().update_task(data['row_id'], message.text)
@@ -345,6 +345,7 @@ async def set_settings(message: types.Message):
 
 @dp.callback_query_handler(lambda c: c.data == 'switch_on_switch_off_send_today_tasks_in_the_morning')
 async def switch_on_switch_off_send_today_tasks_in_the_morning(callback_query: types.CallbackQuery):
+    """Настройка для включения и выключения отправки ежедневных задач"""
     config = load_config()
     if config['send_today_tasks_in_the_morning']:
         config['send_today_tasks_in_the_morning'] = False
@@ -361,6 +362,7 @@ async def switch_on_switch_off_send_today_tasks_in_the_morning(callback_query: t
 
 @dp.callback_query_handler(lambda c: c.data == 'set_morning_time', state='*')
 async def message_for_set_morning_time(callback_query: types.CallbackQuery):
+    """Запрос ввода числа для утреннего времени"""
     config = load_config()
     text_msg = f'С какого хе..., часа начинать отправлять задачи на сегодня?\nСейчас: {int(config["morning_hour"])}'
 
@@ -371,6 +373,7 @@ async def message_for_set_morning_time(callback_query: types.CallbackQuery):
 
 @dp.message_handler(state=StateSetMorningTime.set)
 async def set_morning_time(message: types.Message, state: FSMContext):
+    """Хендлер для настройки утреннего времени"""
     config = load_config()
     try:
         config['morning_hour'] = validate_morning_time(message.text)
@@ -417,13 +420,11 @@ async def send_compliments_or_quotes(time_before_send_message: int):
         quotes = Quotes()
         random_quote = quotes.get_random_object()
         await bot.send_message(ACCESS_ID, f"{random_quote['text']} \n"
-                                          f"{random_quote['author']}")
+                                          f"<i>—{random_quote['author']}</i>")
     else:
         compliments = Compliments()
         random_compliment = compliments.get_random_object()
         await bot.send_message(ACCESS_ID, f"{random_compliment['text']}")
-
-    await bot.send_message(ACCESS_ID, f'{time_before_send_message}, {datetime.now()}')
 
 
 async def send_today_tasks_in_the_morning():
