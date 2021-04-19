@@ -7,6 +7,7 @@ import logging
 from aiogram import Bot, Dispatcher, executor, types
 from aiogram.contrib.fsm_storage.memory import MemoryStorage
 from aiogram.dispatcher import FSMContext
+from aiogram.utils.exceptions import ChatNotFound
 
 import exceptions
 from buttons import start_menu, settings_menu, cancel_menu
@@ -25,13 +26,14 @@ logging.basicConfig(level=logging.INFO)
 # Initialize bot and dispatcher
 bot = Bot(token=API_TOKEN, parse_mode=types.ParseMode.HTML)
 dp = Dispatcher(bot, storage=MemoryStorage())
+
+
 # dp.middleware.setup(AccessMiddleware(ACCESS_ID))
 
 
 @dp.message_handler(commands=['start'])
 async def send_welcome(message: types.Message):
     """Отправляет приветственное сообщение и помощь по боту"""
-
     await message.answer(
         "Ну здарова, Отец!\n\n"
         "Хочешь работы подкинуть? Жми /add_task или напиши Добавь\n"
@@ -197,12 +199,12 @@ async def send_list_tasks(message: types.Message):
         for index, task in enumerate(tasks):
             if task.get('date_'):
                 answer_message += f'\n<b>{index + 1}.</b> {task.get("description")} \nДата: {task.get("date_")}\n ' \
-                                 f'\nУдалить: /del{task.get("id")}\n' \
-                                 f'Обновить: /update{task.get("id")}\n'
+                                  f'\nУдалить: /del{task.get("id")}\n' \
+                                  f'Обновить: /update{task.get("id")}\n'
             else:
                 answer_message += f'\n{index + 1}. {task.get("description")}\n' \
-                                 f'\nУдалить: /del{task.get("id")}\n' \
-                                 f'Обновить: /update{task.get("id")}\n'
+                                  f'\nУдалить: /del{task.get("id")}\n' \
+                                  f'Обновить: /update{task.get("id")}\n'
     else:
         answer_message = 'Никаких задач на сегодня нет. Добавь себе парочку! Не стесняйся, заставлять делать не буду :)'
     await message.answer(answer_message)
@@ -216,8 +218,8 @@ async def send_random_tasks(message: types.Message):
     if len(random_task) != 0:
         answer_message = 'Боги рандома дают тебе:\n'
         answer_message += f'\n{random_task.get("description")}\n' \
-                         f'\nУдалить: /del{random_task.get("id")}' \
-                         f'Обновить: /update{random_task.get("id")}\n'
+                          f'\nУдалить: /del{random_task.get("id")}' \
+                          f'Обновить: /update{random_task.get("id")}\n'
     else:
         answer_message = 'Нет рандомной задачи, потому что задач нет, но если ты добавишь одну, две или три, то в этом казино будет смысл'
     await message.answer(answer_message)
@@ -337,9 +339,12 @@ async def add_task(message: types.Message, state: FSMContext):
 async def set_settings(message: types.Message):
     """Выводит инлайн клавиатуру с настройками"""
     result_string = 'Выбери нужную настройку:\n' \
-                    '1. Вкл/Выкл регулярную отправку задач - включает и отключает ежедневную отправку задач на сегодня\n' \
-                    '2. Установить утреннее время - устанавливает час, в который бот будет отправлять задачи на сегодня.' \
-                    ' Ожидает число от 0 до 23\n'
+                    '1. Вкл/Выкл регулярную отправку задач - включает и отключает ' \
+                    'ежедневную отправку задач на сегодня\n' \
+                    '2. Вкл/Выкл отправку комплиментов и цитат - включает и отключает ' \
+                    'ежедневную отправку комплиментов и цитат\n ' \
+                    '3. Установить утреннее время - устанавливает час, ' \
+                    'в который бот будет отправлять задачи на сегодня. Ожидает число от 0 до 23\n'
     await message.answer(result_string, reply_markup=settings_menu)
 
 
@@ -356,8 +361,23 @@ async def switch_on_switch_off_send_today_tasks_in_the_morning(callback_query: t
         change_config(config)
         text_msg = 'Включил!'
 
-    await bot.answer_callback_query(callback_query.id)
-    await bot.send_message(callback_query.from_user.id, text_msg)
+    await bot.answer_callback_query(callback_query.id, text=text_msg)
+
+
+@dp.callback_query_handler(lambda c: c.data == 'switch_on_switch_off_send_compliments_and_quotes')
+async def switch_on_switch_off_send_compliment_and_quotes(callback_query: types.CallbackQuery):
+    """Настройка для включения и выключения отправки комплиментов или цитат"""
+    config = load_config()
+    if config['send_compliments_and_quotes']:
+        config['send_compliments_and_quotes'] = False
+        change_config(config)
+        text_msg = 'Выключил!'
+    else:
+        config['send_compliments_and_quotes'] = True
+        change_config(config)
+        text_msg = 'Включил!'
+
+    await bot.answer_callback_query(callback_query.id, text=text_msg)
 
 
 @dp.callback_query_handler(lambda c: c.data == 'set_morning_time', state='*')
@@ -383,6 +403,7 @@ async def set_morning_time(message: types.Message, state: FSMContext):
     change_config(config)
     text_msg = f'Теперь буду отправлять к этому часу: {config["morning_hour"]}'
     await message.answer(text_msg, reply_markup=start_menu)
+    await set_settings(message)
     await state.finish()
 
 
@@ -407,54 +428,64 @@ async def send_help(message: types.Message):
         '/week_tasks - Список задач на неделю, можно вызывать словом "неделя"\n'
         '/overdue_tasks - Список просроченных задач, можно вызывать словом "просроченные"\n'
         '/without_deadline - Список задач без даты, можно вызвать фразой "без даты" или "без срока"\n'
-        '/settings - вызывает меню настроек бота, можно вызвать фразой "настройка"\n'
+        '/settings - Вызывает меню настроек бота, можно вызвать фразой "настройка"\n'
         '/reset_state - Возвращает к первоначальному меню откуда хочешь :), можно вызывать словом "отмена"\n',
         reply_markup=start_menu)
 
 
 async def send_compliments_or_quotes(time_before_send_message: int):
     """Отправляет сообщение с комплиментом или цитатой"""
-    await asyncio.sleep(time_before_send_message)
-    compliments_or_quotes = random.randint(0, 1)
-    if compliments_or_quotes == 0:
-        quotes = Quotes()
-        random_quote = quotes.get_random_object()
-        await bot.send_message(ACCESS_ID, f"{random_quote['text']} \n"
-                                          f"<i>—{random_quote['author']}</i>")
-    else:
-        compliments = Compliments()
-        random_compliment = compliments.get_random_object()
-        await bot.send_message(ACCESS_ID, f"{random_compliment['text']}")
+    try:
+        await asyncio.sleep(time_before_send_message)
+        compliments_or_quotes = random.random()
+        if compliments_or_quotes < 0.7:
+            quotes = Quotes()
+            random_quote = quotes.get_random_object()
+            await bot.send_message(ACCESS_ID, f"{random_quote['text']} \n"
+                                              f"<i>—{random_quote['author']}</i>")
+        else:
+            compliments = Compliments()
+            random_compliment = compliments.get_random_object()
+            await bot.send_message(ACCESS_ID, f"{random_compliment['text']}")
+    except ChatNotFound:
+        logging.info('Chat not found. Waiting for.')
+        await asyncio.sleep(86400)
 
 
 async def send_today_tasks_in_the_morning():
     """Отправляет задачи за сегодня раз в день"""
     while True:
-        with open('config.json', 'r') as f:
-            config = json.load(f)
-        if config['send_today_tasks_in_the_morning']:
-            hour = datetime.now().time().hour
-            if hour == config['morning_hour']:
-                await bot.send_message(ACCESS_ID, send_today_tasks_message())
-                await asyncio.sleep(86400)
+        try:
+            config = load_config()
+            if config['send_today_tasks_in_the_morning']:
+                hour = datetime.now().time().hour
+                if hour == config['morning_hour']:
+                    await bot.send_message(ACCESS_ID, send_today_tasks_message())
+                    await asyncio.sleep(86400)
+                else:
+                    await asyncio.sleep(600)
             else:
-                await asyncio.sleep(600)
-        else:
+                await asyncio.sleep(86400)
+        except ChatNotFound:
+            logging.info('Chat not found. Waiting for.')
             await asyncio.sleep(86400)
 
 
 async def check_time(start_time: int, end_time: int):
     """Следит, чтобы сообщения были отправлены в нужный интервал времени"""
     while True:
-        hour = datetime.now().time().hour
-        if start_time <= hour < end_time:
-            time_to_end_interval = (timedelta(hours=(end_time - hour))).total_seconds()
-            random_time_for_send_message = random.randint(1, time_to_end_interval)
-            await send_compliments_or_quotes(random_time_for_send_message)
-            await asyncio.sleep(time_to_end_interval - random_time_for_send_message)
+        config = load_config()
+        if config['send_compliments_and_quotes']:
+            hour = datetime.now().time().hour
+            if start_time <= hour < end_time:
+                time_to_end_interval = (timedelta(hours=(end_time - hour))).total_seconds()
+                random_time_for_send_message = random.randint(1, time_to_end_interval)
+                await send_compliments_or_quotes(random_time_for_send_message)
+                await asyncio.sleep(time_to_end_interval - random_time_for_send_message)
+            else:
+                await asyncio.sleep(3600)
         else:
-            await asyncio.sleep(3600)
-
+            await asyncio.sleep(86400)
 
 if __name__ == '__main__':
     loop = asyncio.get_event_loop()
