@@ -1,6 +1,6 @@
 """Работа с задачами"""
 import re
-from typing import Dict, List, NamedTuple, Any
+from typing import List, NamedTuple
 from datetime import date, datetime, timedelta
 import db
 import exceptions
@@ -112,18 +112,17 @@ class Tasks(ObjectMixin):
     @staticmethod
     def _parse_message(raw_message: str) -> Message:
         """Парсит текст пришедшего сообщения о задаче."""
-        regexp_result = re.match(r"(\d{,2}[./-]\d{,2}[./-]?\d{0,4}) (.*)", raw_message.strip())
-        if not regexp_result:
-            date_match = re.match(r"(\d{,2}[./-]\d{,2}[./-]?\d{0,4})", raw_message.strip())
-            if not date_match:
-                task_date = None
-                task_text = raw_message.strip()
+        regexp_result = re.split(r"^(\d{1,2}[./-]\d{1,2}[./-]?\d{0,4}) ", raw_message.strip(), maxsplit=2)
+        if len(regexp_result) < 2:
+            if regexp_result[0]:
+                if not re.match(r"^(\d{1,2}[./-]\d{1,2}[./-]?\d{0,4})$", regexp_result[0].strip()):
+                    task_date = None
+                    task_text = regexp_result[0].strip()
+                else:
+                    raise exceptions.NotCorrectMessage(
+                        'Вижу только дату. Отсутствует описание задачи. Нужно описание.\n'
+                        'Да! Нужно!')
             else:
-                raise exceptions.NotCorrectMessage('Вижу только дату. Отсутствует описание задачи. Нужно описание.\n'
-                                                   'Да! Нужно!')
-        else:
-            if not regexp_result.group(0) \
-                    or not regexp_result.group(1) or not regexp_result.group(2):
                 raise exceptions.NotCorrectMessage(
                     "Не могу понять сообщение.\n "
                     "Пиши в нужном формате без даты или с ней. \n"
@@ -131,8 +130,9 @@ class Tasks(ObjectMixin):
                     "например:\n12.12.2020 Классная задача по гачимучи"
                     "\nКлассная задача по гачимучи"
                     "\n12/2/21 Классная задача по гачимучи")
-            task_date = Tasks._format_date_with_validate(regexp_result.group(1))
-            task_text = regexp_result.group(2).strip()
+        else:
+            task_date = Tasks._format_date_with_validate(regexp_result[1])
+            task_text = regexp_result[2].strip()
         return Message(date=task_date, description=task_text)
 
     @staticmethod

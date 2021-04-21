@@ -3,6 +3,7 @@ import json
 import random
 from datetime import datetime, timedelta
 import logging
+import os
 
 from aiogram import Bot, Dispatcher, executor, types
 from aiogram.contrib.fsm_storage.memory import MemoryStorage
@@ -17,8 +18,8 @@ from tasks import Tasks
 from utils import StateAddTask, StateSetMorningTime, send_today_tasks_message, validate_morning_time, load_config, \
     change_config, StateUpdateTask
 
-API_TOKEN = '1513442230:AAGZFl5idWxmyxXkTPYwfArTOGraMWp8I-Y'
-ACCESS_ID = 567115076
+API_TOKEN = os.getenv('TELEGRAM_API_TOKEN')
+ACCESS_ID = os.getenv('TELEGRAM_ACCESS_ID')
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -26,9 +27,7 @@ logging.basicConfig(level=logging.INFO)
 # Initialize bot and dispatcher
 bot = Bot(token=API_TOKEN, parse_mode=types.ParseMode.HTML)
 dp = Dispatcher(bot, storage=MemoryStorage())
-
-
-# dp.middleware.setup(AccessMiddleware(ACCESS_ID))
+dp.middleware.setup(AccessMiddleware(ACCESS_ID))
 
 
 @dp.message_handler(commands=['start'])
@@ -79,7 +78,7 @@ async def message_for_update_tasks(message: types.Message, state: FSMContext):
     """Сообщение для обновления задачи по её идентификатору"""
 
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True, selective=True)
-    markup.add("Дату", "Описание")
+    markup.add("Дату ", "Описание")
     markup.add("Отмена")
 
     try:
@@ -95,8 +94,12 @@ async def message_for_update_tasks(message: types.Message, state: FSMContext):
 
     async with state.proxy() as data:
         data['row_id'] = task_id
+    if task.get('date_'):
+        task_date = task.get('date_')
+    else:
+        task_date = 'Нет'
     answer_message = (f"Ты хочешь обновить эту задачу:\n"
-                      f"Дата: {task.get('date_')}\n"
+                      f"Дата: {task_date}\n"
                       f"Текст задачи: {task.get('description')}\n"
                       f"\nЧтобы полностью обновить задачу напиши дату и описание, например:\n"
                       f"\n21.12.2021 Топовая задача для народа"
@@ -108,7 +111,7 @@ async def message_for_update_tasks(message: types.Message, state: FSMContext):
     await StateUpdateTask.full.set()
 
 
-@dp.message_handler(lambda message: 'дату' in message.text.lower(), state=StateUpdateTask.full)
+@dp.message_handler(lambda message: message.text.lower() == 'дату', state=StateUpdateTask.full)
 async def message_for_update_date_tasks(message: types.Message, state: FSMContext):
     """Сообщение о вводе даты для ее обновления"""
     answer_message = "Напиши новую дату"
@@ -137,7 +140,7 @@ async def update_date_tasks(message: types.Message, state: FSMContext):
     await state.finish()
 
 
-@dp.message_handler(lambda message: 'описание' in message.text.lower(), state=StateUpdateTask.full)
+@dp.message_handler(lambda message: message.text.lower() == 'описание', state=StateUpdateTask.full)
 async def message_for_update_description_tasks(message: types.Message, state: FSMContext):
     """Сообщение о вводе описания для его обновления"""
     answer_message = "Напиши новое описание. Такое же красивое, как ты \U0001F970"
@@ -202,7 +205,7 @@ async def send_list_tasks(message: types.Message):
                                   f'\nУдалить: /del{task.get("id")}\n' \
                                   f'Обновить: /update{task.get("id")}\n'
             else:
-                answer_message += f'\n{index + 1}. {task.get("description")}\n' \
+                answer_message += f'\n<b>{index + 1}.</b> {task.get("description")}\n' \
                                   f'\nУдалить: /del{task.get("id")}\n' \
                                   f'Обновить: /update{task.get("id")}\n'
     else:
@@ -215,10 +218,10 @@ async def send_list_tasks(message: types.Message):
 async def send_random_tasks(message: types.Message):
     """Выводит рандомную задачу"""
     random_task = Tasks().get_random_object()
-    if len(random_task) != 0:
+    if random_task:
         answer_message = 'Боги рандома дают тебе:\n'
         answer_message += f'\n{random_task.get("description")}\n' \
-                          f'\nУдалить: /del{random_task.get("id")}' \
+                          f'\nУдалить: /del{random_task.get("id")}\n' \
                           f'Обновить: /update{random_task.get("id")}\n'
     else:
         answer_message = 'Нет рандомной задачи, потому что задач нет, но если ты добавишь одну, две или три, то в этом казино будет смысл'
@@ -241,7 +244,7 @@ async def send_tomorrow_tasks(message: types.Message):
     if len(tomorrow_tasks) != 0:
         result_string = 'Завтра у тебя много работы, прям завал:\n'
         for index, task in enumerate(tomorrow_tasks):
-            result_string += f'\n{index + 1}. {task.get("description")}\n' \
+            result_string += f'\n<b>{index + 1}.</b> {task.get("description")}\n' \
                              f'\nУдалить: /del{task.get("id")}\n' \
                              f'Обновить: /update{task.get("id")}\n'
     else:
@@ -257,7 +260,7 @@ async def send_list_tasks_during_the_week(message: types.Message):
     if len(week_task) != 0:
         result_string = 'Задачи на неделю вперед ждут, пока ты их сделаешь когда-нибудь потом. На, посмотри на них:\n'
         for index, task in enumerate(week_task):
-            result_string += f'\n{index + 1}. {task.get("description")} \nДата: {task.get("date_")}\n ' \
+            result_string += f'<b>\n{index + 1}.</b> {task.get("description")} \nДата: {task.get("date_")}\n ' \
                              f'\nУдалить: /del{task.get("id")}\n' \
                              f'Обновить: /update{task.get("id")}\n'
     else:
@@ -276,7 +279,7 @@ async def send_list_overdue_tasks(message: types.Message):
                         'Да когда-нибудь потом сделаешь, что уж там. \n' \
                         'Но, если это когда-нибудь сейчас, то вот тебе список:\n'
         for index, task in enumerate(overdue_task):
-            result_string += f'\n{index + 1}. {task.get("description")} \nДата: {task.get("date_")}\n ' \
+            result_string += f'\n<b>{index + 1}.</b> {task.get("description")} \nДата: {task.get("date_")}\n ' \
                              f'\nУдалить: /del{task.get("id")}\n' \
                              f'Обновить: /update{task.get("id")}\n'
     else:
@@ -293,7 +296,7 @@ async def send_list_tasks_without_deadline(message: types.Message):
     if len(task_without_deadline) != 0:
         result_string = 'Не люблю задачи с дедлайнами, поэтому кидаю этот список с любовью:\n'
         for index, task in enumerate(task_without_deadline):
-            result_string += f'\n{index + 1}. {task.get("description")}\n' \
+            result_string += f'\n<b>{index + 1}.</b> {task.get("description")}\n' \
                              f'\nУдалить: /del{task.get("id")}\n' \
                              f'Обновить: /update{task.get("id")}\n'
     else:
@@ -486,6 +489,7 @@ async def check_time(start_time: int, end_time: int):
                 await asyncio.sleep(3600)
         else:
             await asyncio.sleep(86400)
+
 
 if __name__ == '__main__':
     loop = asyncio.get_event_loop()

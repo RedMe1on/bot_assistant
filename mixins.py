@@ -26,6 +26,9 @@ class ObjectMixin:
         """Возвращает справочник объектов."""
         return self._all_objects
 
-    def get_random_object(self) -> dict:
+    def get_random_object(self) -> dict or None:
         """Возвращает случайный объект"""
-        return random.choice(self._all_objects)
+        if self._all_objects:
+            return random.choice(self._all_objects)
+        else:
+            return None
