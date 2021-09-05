@@ -8,6 +8,12 @@ class Quote(NamedTuple):
     author: str
 
 
+class StoicismQuote(NamedTuple):
+    """Структура цитаты"""
+    text: str
+    author: str
+
+
 class Compliment(NamedTuple):
     """Структура комплимента"""
     text: str
@@ -16,6 +22,12 @@ class Compliment(NamedTuple):
 class Quotes(ObjectMixin):
     """Класс для работы с цитатами"""
     table = 'quotes'
+    column_string = "id text author"
+
+
+class StoicismQuotes(ObjectMixin):
+    """Класс для работы с цитатами стоицизма"""
+    table = 'stoicism_quote'
     column_string = "id text author"
 
 

@@ -82,4 +82,22 @@ def check_db_exists():
     _init_db()
 
 
+def db_update_stoicism_quotes():
+    """Запускает скрипт с обновлением базы данных"""
+    with open("add_stoicism_quotes.sql", "r") as f:
+        sql = f.read()
+    cursor.executescript(sql)
+    conn.commit()
+
+
+def check_db_update_stoicism():
+    """Проверяет, обновлена ли база данных фразами стоицизма, если нет — добавляет"""
+    cursor.execute("SELECT text FROM stoicism_quote")
+    table_exists = cursor.fetchall()
+    if table_exists:
+        return
+    db_update_stoicism_quotes()
+
+
 check_db_exists()
+check_db_update_stoicism()

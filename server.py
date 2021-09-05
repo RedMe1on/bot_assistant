@@ -13,7 +13,7 @@ from aiogram.utils.exceptions import ChatNotFound
 import exceptions
 from buttons import start_menu, settings_menu, cancel_menu
 from middlewares import AccessMiddleware
-from quotes_and_compliments import Compliments, Quotes
+from quotes_and_compliments import Compliments, Quotes, StoicismQuotes
 from tasks import Tasks
 from utils import StateAddTask, StateSetMorningTime, send_today_tasks_message, validate_morning_time, load_config, \
     change_config, StateUpdateTask
@@ -344,9 +344,11 @@ async def set_settings(message: types.Message):
     result_string = 'Выбери нужную настройку:\n' \
                     '1. Вкл/Выкл регулярную отправку задач - включает и отключает ' \
                     'ежедневную отправку задач на сегодня\n' \
-                    '2. Вкл/Выкл отправку комплиментов и цитат - включает и отключает ' \
+                    '2. Вкл/Выкл регулярную отправку фраз стоицизма - включает и отключает ' \
+                    'ежедневную отправку фраз стоицизма\n ' \
+                    '3. Вкл/Выкл отправку комплиментов и цитат - включает и отключает ' \
                     'ежедневную отправку комплиментов и цитат\n ' \
-                    '3. Установить утреннее время - устанавливает час, ' \
+                    '4. Установить утреннее время - устанавливает час, ' \
                     'в который бот будет отправлять задачи на сегодня. Ожидает число от 0 до 23\n'
     await message.answer(result_string, reply_markup=settings_menu)
 
@@ -361,6 +363,22 @@ async def switch_on_switch_off_send_today_tasks_in_the_morning(callback_query: t
         text_msg = 'Выключил!'
     else:
         config['send_today_tasks_in_the_morning'] = True
+        change_config(config)
+        text_msg = 'Включил!'
+
+    await bot.answer_callback_query(callback_query.id, text=text_msg)
+
+
+@dp.callback_query_handler(lambda c: c.data == 'switch_on_switch_off_send_stoicism_quotes_in_the_morning')
+async def switch_on_switch_off_send_today_tasks_in_the_morning(callback_query: types.CallbackQuery):
+    """Настройка для включения и выключения ежедневной отправки фраз стоицизма"""
+    config = load_config()
+    if config['send_stoicism_quotes_in_the_morning']:
+        config['send_stoicism_quotes_in_the_morning'] = False
+        change_config(config)
+        text_msg = 'Выключил!'
+    else:
+        config['send_stoicism_quotes_in_the_morning'] = True
         change_config(config)
         text_msg = 'Включил!'
 
@@ -474,6 +492,28 @@ async def send_today_tasks_in_the_morning():
             await asyncio.sleep(86400)
 
 
+async def send_stoicism_quotes_in_the_morning():
+    """Отправляет цитату стоицизма раз в день"""
+    while True:
+        try:
+            config = load_config()
+            if config['send_stoicism_quotes_in_the_morning']:
+                hour = datetime.now().time().hour
+                if hour == config['morning_hour'] + 1:
+                    stoicism_quotes = StoicismQuotes()
+                    random_stoicism_quotes = stoicism_quotes.get_random_object()
+                    await bot.send_message(ACCESS_ID, f"{random_stoicism_quotes['text']} \n"
+                                                      f"<i>—{random_stoicism_quotes['author']}</i>")
+                    await asyncio.sleep(86400)
+                else:
+                    await asyncio.sleep(600)
+            else:
+                await asyncio.sleep(86400)
+        except ChatNotFound:
+            logging.info('Chat not found. Waiting for.')
+            await asyncio.sleep(86400)
+
+
 async def check_time(start_time: int, end_time: int):
     """Следит, чтобы сообщения были отправлены в нужный интервал времени"""
     while True:
@@ -495,4 +535,5 @@ if __name__ == '__main__':
     loop = asyncio.get_event_loop()
     loop.create_task(check_time(start_time=9, end_time=22))
     loop.create_task(send_today_tasks_in_the_morning())
+    loop.create_task(send_stoicism_quotes_in_the_morning())
     executor.start_polling(dp, skip_updates=True)
